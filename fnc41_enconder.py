@@ -2,11 +2,14 @@
 
 import string
 import sys
+import time
 import turtle
 
 if sys.version_info[0] != 3:
     print("This script requires Python version 3.x")
     sys.exit(1)
+
+SAVE_TEST_FILES = False
 
 SUPPORTED_TYPES = ['decimal', 'binary', 'morse', 'braille']
 
@@ -112,12 +115,12 @@ BRAILLE = {
     'Y': chr(10301),
     'Z': chr(10293)}
 
-
 UPPER_ALPHA = string.ascii_uppercase
 
 ALPHA_TO_NUM = {}
 for i, x in enumerate(UPPER_ALPHA, 1):
     ALPHA_TO_NUM[x] = i
+
 
 class FNC41Encoder():
     def __init__(self):
@@ -125,6 +128,8 @@ class FNC41Encoder():
 
     def initialize_turtle(self):
         self.turtle = turtle.Turtle()
+        # turtle.screensize(canvwidth=None, canvheight=None)
+        self.turtle.screen.screensize(400, 400)
         self.turtle.hideturtle()
         self.turtle.penup()
         self.turtle.goto((-300, 250))
@@ -133,7 +138,15 @@ class FNC41Encoder():
     def save(self, outfile):
         ts = self.turtle.getscreen()
         cv = ts.getcanvas()
-        cv.postscript(file=outfile, colormode='color')
+
+        # colormode  Use 'color' for color output, 'gray' for grayscale, or 'mono' for black and white.
+        # file       If supplied, names a file where the PostScript will be written. If this option is not given, the PostScript is returned as a string.
+        # height     How much of the Y size of the canvas to print. Default is the entire visible height of the canvas.
+        # rotate     If false, the page will be rendered in portrait orientation; if true, in landscape.
+        # x          Leftmost canvas coordinate of the area to print.
+        # y          Topmost canvas coordinate of the area to print.
+        # width      How much of the X size of the canvas to print. Default is the visible width of the canvas.
+        cv.postscript(file=outfile) #, colormode='color')
         print("message written to '{}'".format(outfile))
 
     def encode(self, msg, encode_type='decimal'):
@@ -170,13 +183,13 @@ class FNC41Encoder():
         self.encoded_msg = " ".join(l)
 
     def _encode_braille(self, msg):
-        l = []
+        l = ''
         for c in msg:
             if c in BRAILLE.keys():
-                l.append(str(BRAILLE[c]))
+                l += BRAILLE[c]
             else:
-                l.append(c)
-        self.encoded_msg = " ".join(l)
+                l += c
+        self.encoded_msg = l
 
     def _encode_binary(self, msg):
         l = []
@@ -190,29 +203,31 @@ class FNC41Encoder():
     def write(self):
         if self.encoded_msg:
             self.initialize_turtle()
-            self.turtle.write(self.encoded_msg, font=("Arial", 16, "normal"))
+            self.turtle.write(self.encoded_msg, font=("Times", 20, "bold"))
         else:
             raise Exception("call the encode() method first")
 
+    def clear(self):
+        self.turtle.clear()
 
 def test():
     for x in UPPER_ALPHA:
         print('{:<1}  {:<2}  {:<7}  {:<4}  {:<8}  {:<4}'.format(
             x, ALPHA_TO_NUM[x], bin(ALPHA_TO_NUM[x]).lstrip('0b'), MORSE_CODE_DICT[x], PHONETIC[x], BRAILLE[x]))
+    print('\n')
 
-    encoder = FNC41Encoder()
+    test_string = 'hello there'
+    print(test_string)
 
-    encoder.encode("hello there")
-    print(encoder.encoded_msg)
-
-    encoder.encode("hello there", 'morse')
-    print(encoder.encoded_msg)
-
-    encoder.encode("hello there", 'braille')
-    print(encoder.encoded_msg)
-
-    encoder.encode("hello there", 'binary')
-    print(encoder.encoded_msg)
+    for t in SUPPORTED_TYPES:
+        encoder = FNC41Encoder()
+        encoder.encode(test_string, t)
+        print(t, encoder.encoded_msg)
+        encoder.write()
+        if SAVE_TEST_FILES:
+            encoder.save('{}.ps'.format(t))
+        time.sleep(5)
+        encoder.clear()
 
 if __name__ == '__main__':
     if len(sys.argv) == 2 and sys.argv[1] == 'test':
@@ -230,6 +245,7 @@ if __name__ == '__main__':
 
     if msg:
         encoder = FNC41Encoder()
-        encoder.encode(msg)
+        encoder.encode(msg, encode_type)
         encoder.write()
         encoder.save('temp.ps')
+        time.sleep(5)
