@@ -28,3 +28,7 @@ message written to 'test.pdf'
 The following fonts are used for braille and pigpen:
 - https://www.dafont.com/braille.font
 - http://www.babelstone.co.uk/Fonts/Pigpen.html BabelStonePigpen
+
+## Example
+
+<img src="example.png" border="0" alt="example">
