@@ -1,6 +1,4 @@
-# FNC41
-
-## FNC41 encoder script
+# FNC41 encoder script
 
 Encoder script inspired by [Field Notes Clandestine](https://fieldnotesbrand.com/products/clandestine) notebook.
 
