@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import random
 import string
 import sys
 import time
@@ -156,7 +157,7 @@ class FNC41Encoder():
         self.pdf.output(outfile, 'F')
         print("message written to '{}'".format(outfile))
 
-    def write_msg(self, msg, encode_type='decimal'):
+    def write_msg(self, msg, encode_type='decimal', wrap=True):
         self.encode_type = encode_type
 
         msg = msg.upper()
@@ -168,7 +169,6 @@ class FNC41Encoder():
             self._encode_morse(msg)
 
         if encode_type == 'braille':
-            # self._encode_braille(msg)
             self.encoded_msg = msg
 
         if encode_type == 'binary':
@@ -177,19 +177,32 @@ class FNC41Encoder():
         if encode_type == 'pigpen':
             self.encoded_msg = msg
 
-        #for i in range(1, 41):
-        #    self.pdf.cell(0, 10, 'Printing line number ' + str(i), 0, 1)
+        if encode_type == 'hex':
+            self._encode_hex(msg)
 
         if self.encoded_msg:
             self.pdf.set_font('Times', '', 16)
-            if self.encode_type == 'pigpen':
+            if self.encode_type == 'pigpen' and PIGPEN_SUPPORTED:
                 self.pdf.set_font(PIGPEN_FONT, '', 16)
-            if self.encode_type == 'braille':
+            if self.encode_type == 'braille' and BRAILLE_SUPPORTED:
                 self.pdf.set_font(BRAILLE_FONT, '', 16)
-            self.pdf.cell(40, 10, self.encoded_msg, 0, 1)
-            self.pdf.ln(10)
+            # fpdf.cell(w, h = 0, txt = '', border = 0, ln = 0, align = '', fill = False, link = '')
+            len = self.pdf.get_string_width(self.encoded_msg) + 5
+            if wrap:
+                self.pdf.multi_cell(0, 10, self.encoded_msg)
+            else:
+                self.pdf.cell(len, 10, self.encoded_msg, 0)
         else:
             raise Exception("call the encode() method first")
+
+    def write_msg_random(self, msg):
+        counter = 0
+        for s in msg.split(' '):
+            t = random.choice(SUPPORTED_TYPES)
+            self.write_msg(s, t, False)
+            counter += 1
+            if counter % 3 == 0:
+                self.pdf.ln(10)
 
     def _encode_decimal(self, msg):
         l = []
