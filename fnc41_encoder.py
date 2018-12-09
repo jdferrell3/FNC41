@@ -12,7 +12,7 @@ if sys.version_info[0] != 3:
     sys.exit(1)
 
 # when run with 'test' argument, this is the default output file
-TEST_PDF = 'test.pdf'
+TEST_PDF = 'example.pdf'
 
 # BabelStonePigpen from http://www.babelstone.co.uk/Fonts/Pigpen.html
 PIGPEN_FONT_FILE = 'BabelStonePigpen.ttf'
@@ -22,7 +22,17 @@ PIGPEN_FONT = 'BabelStonePigpen'
 BRAILLE_FONT_FILE = 'BRAILLE1.ttf'
 BRAILLE_FONT = 'BRAILLE1'
 
-SUPPORTED_TYPES = ['decimal', 'binary', 'morse', 'braille', 'pigpen']
+SUPPORTED_TYPES = ['decimal', 'binary', 'morse', 'hex']
+
+BRAILLE_SUPPORTED = False
+if os.path.exists(BRAILLE_FONT_FILE):
+    SUPPORTED_TYPES.append('braille')
+    BRAILLE_SUPPORTED = True
+
+PIGPEN_SUPPORTED = False
+if os.path.exists(PIGPEN_FONT_FILE):
+    SUPPORTED_TYPES.append('pigpen')
+    PIGPEN_SUPPORTED = True
 
 # Dictionary representing the morse code chart
 MORSE_CODE_DICT = {
@@ -139,17 +149,15 @@ class FNC41Encoder():
         self.pdf = FPDF()
         self.pdf.add_page()
 
-        # self.pdf.add_font('FreeSans', '', 'FreeSans.ttf', uni=True)
-
         if os.path.exists(PIGPEN_FONT_FILE):
             self.pdf.add_font(PIGPEN_FONT, '', PIGPEN_FONT_FILE, uni=True)
         else:
-            print('pigpen font not found, pigpen not supported')
+            print('[!] pigpen font not found, pigpen not supported')
 
         if os.path.exists(BRAILLE_FONT_FILE):
             self.pdf.add_font(BRAILLE_FONT, '', BRAILLE_FONT_FILE, uni=True)
         else:
-            print('pigpen font not found, pigpen not supported')
+            print('[!] braille font not found, braille not supported')
 
         self.pdf.set_font('Times', '', 16)
 
@@ -213,6 +221,15 @@ class FNC41Encoder():
                 l.append(c)
         self.encoded_msg = " ".join(l)
 
+    def _encode_hex(self, msg):
+        l = []
+        for c in msg:
+            if c in ALPHA_TO_NUM.keys():
+                l.append(hex(ALPHA_TO_NUM[c]))
+            else:
+                l.append(c)
+        self.encoded_msg = " ".join(l)
+
     def _encode_morse(self, msg):
         l = []
         for c in msg:
@@ -240,23 +257,8 @@ class FNC41Encoder():
                 l.append(c)
         self.encoded_msg = " ".join(l)
 
-    # def write(self):
-    #     if self.encoded_msg:
-    #         if self.encode_type == 'pigpen':
-    #             self.pdf.set_font(PIGPEN_FONT, '', 16)
-    #         if self.encode_type == 'braille':
-    #             self.pdf.set_font(BRAILLE_FONT, '', 16)
-    #         self.pdf.cell(40, 10, self.encoded_msg)
-    #     else:
-    #         raise Exception("call the encode() method first")
-
-def test(outfile):
-    for x in UPPER_ALPHA:
-        print('{:<1}  {:<2}  {:<7}  {:<4}  {:<8}  {:<4}'.format(
-            x, ALPHA_TO_NUM[x], bin(ALPHA_TO_NUM[x]).lstrip('0b'), MORSE_CODE_DICT[x], PHONETIC[x], BRAILLE[x]))
-    print('\n')
-
-    test_string = 'hello there, this is a test'
+def example1(outfile):
+    test_string = 'hello there, this is a test with a long string'
 
     encoder = FNC41Encoder()
     for t in SUPPORTED_TYPES:
@@ -264,9 +266,21 @@ def test(outfile):
         print('- writing {}'.format(t))
     encoder.save(outfile)
 
+def example2(outfile):
+    test_string = 'hello there, this is a test with a long string'
+
+    encoder = FNC41Encoder()
+    encoder.write_msg_random(test_string)
+    print('- writing {}'.format('random'))
+    encoder.save(outfile)
+
 if __name__ == '__main__':
-    if len(sys.argv) == 2 and sys.argv[1] == 'test':
-        test(TEST_PDF)
+    if len(sys.argv) == 2 and sys.argv[1] == 'example1':
+        example1(TEST_PDF)
+        sys.exit(0)
+
+    if len(sys.argv) == 2 and sys.argv[1] == 'example2':
+        example1(TEST_PDF)
         sys.exit(0)
 
     print("Please specify encode type: %r" % SUPPORTED_TYPES)
@@ -280,6 +294,5 @@ if __name__ == '__main__':
 
     if msg:
         encoder = FNC41Encoder()
-        encoder.encode(msg, encode_type)
-        encoder.write()
+        encoder.write_msg(msg, encode_type)
         encoder.save('temp.pdf')
