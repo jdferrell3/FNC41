@@ -1,17 +1,27 @@
 #!/usr/bin/env python
 
+import os
 import string
 import sys
 import time
-import turtle
+from fpdf import FPDF
 
 if sys.version_info[0] != 3:
     print("This script requires Python version 3.x")
     sys.exit(1)
 
-SAVE_TEST_FILES = False
+# when run with 'test' argument, this is the default output file
+TEST_PDF = 'test.pdf'
 
-SUPPORTED_TYPES = ['decimal', 'binary', 'morse', 'braille']
+# BabelStonePigpen from http://www.babelstone.co.uk/Fonts/Pigpen.html
+PIGPEN_FONT_FILE = 'BabelStonePigpen.ttf'
+PIGPEN_FONT = 'BabelStonePigpen'
+
+# braille from https://www.dafont.com/braille.font
+BRAILLE_FONT_FILE = 'BRAILLE1.ttf'
+BRAILLE_FONT = 'BRAILLE1'
+
+SUPPORTED_TYPES = ['decimal', 'binary', 'morse', 'braille', 'pigpen']
 
 # Dictionary representing the morse code chart
 MORSE_CODE_DICT = {
@@ -40,24 +50,24 @@ MORSE_CODE_DICT = {
     'W': '.--',
     'X': '-..-',
     'Y': '-.--',
-    'Z': '--..',
-    '1': '.----',
-    '2': '..---',
-    '3': '...--',
-    '4': '....-',
-    '5': '.....',
-    '6': '-....',
-    '7': '--...',
-    '8': '---..',
-    '9': '----.',
-    '0': '-----',
-    ',': '--..--',
-    '.': '.-.-.-',
-    '?': '..--..',
-    '/': '-..-.',
-    '-': '-....-',
-    '(': '-.--.',
-    ')': '-.--.-'}
+    'Z': '--..'}
+    # '1': '.----',
+    # '2': '..---',
+    # '3': '...--',
+    # '4': '....-',
+    # '5': '.....',
+    # '6': '-....',
+    # '7': '--...',
+    # '8': '---..',
+    # '9': '----.',
+    # '0': '-----',
+    # ',': '--..--',
+    # '.': '.-.-.-',
+    # '?': '..--..',
+    # '/': '-..-.',
+    # '-': '-....-',
+    # '(': '-.--.',
+    # ')': '-.--.-'}
 
 PHONETIC = {
     'A': 'Alpha',
@@ -121,35 +131,34 @@ ALPHA_TO_NUM = {}
 for i, x in enumerate(UPPER_ALPHA, 1):
     ALPHA_TO_NUM[x] = i
 
-
 class FNC41Encoder():
     def __init__(self):
         self.encoded_msg = None
 
-    def initialize_turtle(self):
-        self.turtle = turtle.Turtle()
-        # turtle.screensize(canvwidth=None, canvheight=None)
-        self.turtle.screen.screensize(400, 400)
-        self.turtle.hideturtle()
-        self.turtle.penup()
-        self.turtle.goto((-300, 250))
-        self.turtle.pendown()
+        self.pdf = FPDF()
+        self.pdf.add_page()
+
+        # self.pdf.add_font('FreeSans', '', 'FreeSans.ttf', uni=True)
+
+        if os.path.exists(PIGPEN_FONT_FILE):
+            self.pdf.add_font(PIGPEN_FONT, '', PIGPEN_FONT_FILE, uni=True)
+        else:
+            print('pigpen font not found, pigpen not supported')
+
+        if os.path.exists(BRAILLE_FONT_FILE):
+            self.pdf.add_font(BRAILLE_FONT, '', BRAILLE_FONT_FILE, uni=True)
+        else:
+            print('pigpen font not found, pigpen not supported')
+
+        self.pdf.set_font('Times', '', 16)
 
     def save(self, outfile):
-        ts = self.turtle.getscreen()
-        cv = ts.getcanvas()
-
-        # colormode  Use 'color' for color output, 'gray' for grayscale, or 'mono' for black and white.
-        # file       If supplied, names a file where the PostScript will be written. If this option is not given, the PostScript is returned as a string.
-        # height     How much of the Y size of the canvas to print. Default is the entire visible height of the canvas.
-        # rotate     If false, the page will be rendered in portrait orientation; if true, in landscape.
-        # x          Leftmost canvas coordinate of the area to print.
-        # y          Topmost canvas coordinate of the area to print.
-        # width      How much of the X size of the canvas to print. Default is the visible width of the canvas.
-        cv.postscript(file=outfile) #, colormode='color')
+        self.pdf.output(outfile, 'F')
         print("message written to '{}'".format(outfile))
 
-    def encode(self, msg, encode_type='decimal'):
+    def write_msg(self, msg, encode_type='decimal'):
+        self.encode_type = encode_type
+
         msg = msg.upper()
 
         if encode_type == 'decimal':
@@ -159,10 +168,28 @@ class FNC41Encoder():
             self._encode_morse(msg)
 
         if encode_type == 'braille':
-            self._encode_braille(msg)
+            # self._encode_braille(msg)
+            self.encoded_msg = msg
 
         if encode_type == 'binary':
             self._encode_binary(msg)
+
+        if encode_type == 'pigpen':
+            self.encoded_msg = msg
+
+        #for i in range(1, 41):
+        #    self.pdf.cell(0, 10, 'Printing line number ' + str(i), 0, 1)
+
+        if self.encoded_msg:
+            self.pdf.set_font('Times', '', 16)
+            if self.encode_type == 'pigpen':
+                self.pdf.set_font(PIGPEN_FONT, '', 16)
+            if self.encode_type == 'braille':
+                self.pdf.set_font(BRAILLE_FONT, '', 16)
+            self.pdf.cell(40, 10, self.encoded_msg, 0, 1)
+            self.pdf.ln(10)
+        else:
+            raise Exception("call the encode() method first")
 
     def _encode_decimal(self, msg):
         l = []
@@ -200,38 +227,33 @@ class FNC41Encoder():
                 l.append(c)
         self.encoded_msg = " ".join(l)
 
-    def write(self):
-        if self.encoded_msg:
-            self.initialize_turtle()
-            self.turtle.write(self.encoded_msg, font=("Times", 20, "bold"))
-        else:
-            raise Exception("call the encode() method first")
+    # def write(self):
+    #     if self.encoded_msg:
+    #         if self.encode_type == 'pigpen':
+    #             self.pdf.set_font(PIGPEN_FONT, '', 16)
+    #         if self.encode_type == 'braille':
+    #             self.pdf.set_font(BRAILLE_FONT, '', 16)
+    #         self.pdf.cell(40, 10, self.encoded_msg)
+    #     else:
+    #         raise Exception("call the encode() method first")
 
-    def clear(self):
-        self.turtle.clear()
-
-def test():
+def test(outfile):
     for x in UPPER_ALPHA:
         print('{:<1}  {:<2}  {:<7}  {:<4}  {:<8}  {:<4}'.format(
             x, ALPHA_TO_NUM[x], bin(ALPHA_TO_NUM[x]).lstrip('0b'), MORSE_CODE_DICT[x], PHONETIC[x], BRAILLE[x]))
     print('\n')
 
-    test_string = 'hello there'
-    print(test_string)
+    test_string = 'hello there, this is a test'
 
+    encoder = FNC41Encoder()
     for t in SUPPORTED_TYPES:
-        encoder = FNC41Encoder()
-        encoder.encode(test_string, t)
-        print(t, encoder.encoded_msg)
-        encoder.write()
-        if SAVE_TEST_FILES:
-            encoder.save('{}.ps'.format(t))
-        time.sleep(5)
-        encoder.clear()
+        encoder.write_msg(test_string, t)
+        print('- writing {}'.format(t))
+    encoder.save(outfile)
 
 if __name__ == '__main__':
     if len(sys.argv) == 2 and sys.argv[1] == 'test':
-        test()
+        test(TEST_PDF)
         sys.exit(0)
 
     print("Please specify encode type: %r" % SUPPORTED_TYPES)
@@ -247,5 +269,4 @@ if __name__ == '__main__':
         encoder = FNC41Encoder()
         encoder.encode(msg, encode_type)
         encoder.write()
-        encoder.save('temp.ps')
-        time.sleep(5)
+        encoder.save('temp.pdf')
